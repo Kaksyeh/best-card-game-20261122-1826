@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Ember Court — a card duel</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    background: radial-gradient(1200px 700px at 50% 0%, #3a1c0d 0%, #1c0e06 55%, #120702 100%);
+    color: #f3e6cf; font-family: Georgia, 'Times New Roman', serif;
+    overflow: hidden; user-select: none;
+  }
+  #stage { width: 100vw; height: 100vh; display: flex; flex-direction: column; padding: 10px 18px; }
+  header { display: flex; justify-content: space-between; align-items: center; height: 44px; }
+  header h1 { font-size: 26px; letter-spacing: 4px; color: #ffb347; text-shadow: 0 0 18px rgba(255,140,0,.55); }
+  header .tag { font-size: 13px; color: #c9a86a; letter-spacing: 2px; }
+  .btn { font-family: inherit; background: #5a2d0c; color: #ffd9a0; border: 1px solid #a06a2c;
+    border-radius: 6px; padding: 6px 12px; cursor: pointer; font-size: 14px; }
+  .btn:hover { background: #7a3f14; }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .btn.big { font-size: 20px; padding: 12px 30px; background: #b35c12; color: #fff3dd; letter-spacing: 2px; }
+  .btn.big:hover { background: #d6731a; }
+  #baronRow, #playerRow { display: flex; align-items: flex-start; gap: 16px; }
+  .fighter { width: 250px; flex: none; }
+  .fighter .name { font-size: 19px; letter-spacing: 1px; }
+  .baron .name { color: #ff8a7a; } .warden .name { color: #9fd8ff; }
+  .lifebar { height: 18px; background: #2a150a; border: 1px solid #6b4423; border-radius: 9px; overflow: hidden; margin: 4px 0; }
+  .lifefill { height: 100%; background: linear-gradient(90deg, #e33, #f66); transition: width .35s; }
+  .warden .lifefill { background: linear-gradient(90deg, #2a7, #5d5); }
+  .lifeNum { font-size: 15px; }
+  .statline { font-size: 14px; color: #e8c98a; margin-top: 2px; min-height: 18px; }
+  .handbacks { display: flex; gap: 6px; margin-top: 6px; }
+  .back { width: 34px; height: 48px; border-radius: 5px; background: repeating-linear-gradient(45deg, #7a1f1f 0 6px, #4a1010 6px 12px);
+    border: 2px solid #c98a2c; }
+  #midRow { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; min-height: 0; }
+  #log { font-size: 17px; color: #ffe9bd; min-height: 24px; text-align: center; font-style: italic; }
+  #playedRow { display: flex; gap: 14px; align-items: center; min-height: 132px; }
+  .playedLabel { font-size: 13px; color: #c9a86a; text-align: center; margin-bottom: 4px; letter-spacing: 1px; }
+  #intent { font-size: 15px; color: #ff9d5c; text-align: center; min-height: 20px; font-weight: bold; }
+  #emberRow { display: flex; gap: 5px; align-items: center; font-size: 15px; }
+  .pip { width: 16px; height: 16px; border-radius: 50%; background: #3a1c0d; border: 1px solid #a06a2c; display: inline-block; }
+  .pip.on { background: radial-gradient(circle at 35% 35%, #ffd76a, #ff7b00); box-shadow: 0 0 8px #ff8c00; }
+  #hand { display: flex; gap: 12px; justify-content: center; min-height: 178px; }
+  .card { width: 124px; height: 172px; border-radius: 10px; padding: 8px 7px; cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; position: relative;
+    background: linear-gradient(160deg, #fdf6e3, #e8d9b0); color: #241505;
+    border: 3px solid #6b4423; box-shadow: 0 4px 10px rgba(0,0,0,.6); transition: transform .15s, box-shadow .15s; }
+  .card:hover { transform: translateY(-12px) scale(1.04); box-shadow: 0 10px 18px rgba(0,0,0,.7); }
+  .card.unplayable { filter: grayscale(.7) brightness(.75); cursor: not-allowed; }
+  .card.unplayable:hover { transform: none; }
+  .card .cost { position: absolute; top: 5px; left: 6px; width: 24px; height: 24px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #ffd76a, #ff7b00); color: #3a1500; font-weight: bold;
+    display: flex; align-items: center; justify-content: center; font-size: 15px; border: 1px solid #8a5a10; }
+  .card .suitIcon { width: 52px; height: 52px; margin-top: 8px; }
+  .card .suitIcon svg { width: 100%; height: 100%; }
+  .card .cname { font-size: 14px; font-weight: bold; text-align: center; margin-top: 6px; line-height: 1.15; min-height: 32px; }
+  .card .cval { font-size: 22px; font-weight: bold; margin-top: 2px; }
+  .card .cdesc { font-size: 11.5px; text-align: center; color: #5a3a1a; margin-top: 2px; line-height: 1.2; }
+  .card .combo { position: absolute; bottom: 5px; left: 0; right: 0; text-align: center; font-size: 11px;
+    font-weight: bold; color: #b35400; letter-spacing: .5px; }
+  .card.flame { border-color: #c22; } .card.frost { border-color: #2a7fd8; }
+  .card.leaf { border-color: #2a8a3a; } .card.stone { border-color: #777; }
+  .card.played { cursor: default; transform: none; }
+  .card.played:hover { transform: none; }
+  .card.small { width: 100px; height: 140px; }
+  .card.small .suitIcon { width: 40px; height: 40px; }
+  .card.small .cname { font-size: 12px; }
+  .card.small .cval { font-size: 18px; }
+  #endBtn { margin-left: 18px; }
+  .overlay { position: fixed; inset: 0; background: rgba(10,4,1,.82); display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 18px; z-index: 10; text-align: center; }
+  .overlay h2 { font-size: 56px; letter-spacing: 6px; }
+  .overlay.win h2 { color: #ffd76a; text-shadow: 0 0 30px #ff8c00; }
+  .overlay.loss h2 { color: #b8b0a8; text-shadow: 0 0 24px #555; }
+  .overlay p { font-size: 18px; color: #f3e6cf; max-width: 560px; line-height: 1.5; }
+  .overlay .howto { font-size: 15px; color: #c9a86a; }
+  .ember { position: absolute; width: 8px; height: 8px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #ffe08a, #ff7b00); animation: floatUp 2.6s linear infinite; }
+  @keyframes floatUp { from { transform: translateY(0); opacity: 1; } to { transform: translateY(-260px); opacity: 0; } }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <header>
+    <h1>EMBER COURT</h1>
+    <span class="tag">A CARD DUEL &middot; TURN <span id="turnNum">1</span></span>
+    <span>
+      <button class="btn" id="muteBtn">SOUND: ON</button>
+      <button class="btn" id="restartBtn">RESTART</button>
+    </span>
+  </header>
+  <div id="baronRow">
+    <div class="fighter baron">
+      <div class="name">&#128293; ASH BARON</div>
+      <div class="lifebar"><div class="lifefill" id="baronLifeFill" style="width:100%"></div></div>
+      <div class="lifeNum">Life <b id="baronLife">30</b> / 30</div>
+      <div class="statline" id="baronStats"></div>
+      <div class="handbacks" id="baronBacks"></div>
+    </div>
+    <div style="flex:1"></div>
+    <div class="fighter" style="text-align:right">
+      <div class="name" style="color:#c9a86a">OPPONENT'S HAND</div>
+      <div class="statline" id="baronHandCount"></div>
+    </div>
+  </div>
+  <div id="midRow">
+    <div id="intent"></div>
+    <div id="playedRow">
+      <div><div class="playedLabel">BARON PLAYS</div><div id="baronPlayed"></div></div>
+      <div style="width:40px"></div>
+      <div><div class="playedLabel">YOU PLAYED</div><div id="playerPlayed"></div></div>
+    </div>
+    <div id="log">Your move, Warden.</div>
+    <div><button class="btn big" id="endBtn">END TURN &nbsp;(Space)</button></div>
+  </div>
+  <div id="playerRow">
+    <div class="fighter warden">
+      <div class="name">&#127793; EMBER WARDEN &middot; YOU</div>
+      <div class="lifebar"><div class="lifefill" id="playerLifeFill" style="width:100%"></div></div>
+      <div class="lifeNum">Life <b id="playerLife">30</b> / 30</div>
+      <div class="statline" id="playerStats"></div>
+      <div id="emberRow"></div>
+    </div>
+    <div style="flex:1"><div id="hand"></div></div>
+  </div>
+</div>
+<div class="overlay" id="titleScreen">
+  <h2 style="color:#ffb347;text-shadow:0 0 30px rgba(255,140,0,.6)">EMBER COURT</h2>
+  <p>You are the Ember Warden. The Ash Baron has challenged you to a duel of cards.<br>
+  Spend ember to play cards &mdash; Flame burns, Frost shields, Leaf mends, Stone fortifies.<br>
+  Read the Baron's intent, then counter it. First to 0 life loses.</p>
+  <p class="howto">Click a card or press 1&ndash;5 to play it &middot; Space ends your turn &middot; Flame after Frost hits twice as hard &middot; Leaf after Stone draws a card &middot; no Flame in hand? you scout until you find one</p>
+  <button class="btn big" id="startBtn">START DUEL</button>
+</div>
+<div class="overlay win hidden" id="winScreen">
+  <h2>VICTORY</h2>
+  <p>The Ash Baron's court is ashes. The Ember Warden stands unburned.<br><span id="winDetail"></span></p>
+  <button class="btn big" id="winAgainBtn">PLAY AGAIN</button>
+</div>
+<div class="overlay loss hidden" id="lossScreen">
+  <h2>DEFEAT</h2>
+  <p>Your ember gutters out. The Ash Baron laughs in the dark.<br><span id="lossDetail"></span></p>
+  <button class="btn big" id="lossRetryBtn">RETRY THE DUEL</button>
+</div>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
